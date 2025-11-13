@@ -1,0 +1,4 @@
+# This project only uses Python's built-in math library
+# No external dependencies required
+# Python 3.x is required
+
