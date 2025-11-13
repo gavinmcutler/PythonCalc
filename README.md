@@ -42,10 +42,15 @@ Run the examples to see all derivative rules in action:
 python examples.py
 ```
 
-Or use the library in your own code:
+Or import and use the library in your own Python scripts:
 
-```bash
-python derivative.py  # (if you add your own code at the bottom)
+```python
+from derivative import func, diff
+
+# Your code here
+y = func("x**2 + 1", "x")
+dydx = diff(y, "x")
+print(dydx)
 ```
 
 ## Usage
@@ -141,6 +146,118 @@ DERIVATIVE RULE TESTS
 - **Differentiation**: Each node type implements its own `diff()` method
 - **Simplification**: Automatic simplification of derivative expressions
 
+## How the Parser Works
+
+The parser uses a **recursive descent parser** to convert mathematical expressions from strings into an Abstract Syntax Tree (AST). This section explains each step of the parsing process.
+
+### Overview
+
+The parser follows operator precedence rules:
+- **Highest precedence**: Exponentiation (`^` or `**`) - right-associative
+- **Medium precedence**: Multiplication (`*`) and Division (`/`) - left-associative
+- **Lowest precedence**: Addition (`+`) and Subtraction (`-`) - left-associative
+
+### Parsing Steps
+
+The parser processes expressions in a hierarchical manner, starting from the lowest precedence operations and working down to atoms:
+
+#### 1. **Entry Point: `parse()`**
+   - Main entry point that initiates parsing
+   - Calls `parse_expr()` to parse the entire expression
+   - Verifies no trailing characters remain after parsing
+
+#### 2. **Top Level: `parse_expr()`**
+   - Parses addition and subtraction operations (lowest precedence)
+   - Starts by parsing a term, then looks for `+` or `-` operators
+   - Builds left-associative chains: `a + b - c` → `((a + b) - c)`
+   - Example: `"x + 2*y - 3"` → `BinOpNode(BinOpNode(x, '+', 2*y), '-', 3)`
+
+#### 3. **Terms: `parse_term()`**
+   - Parses multiplication and division operations (medium precedence)
+   - Starts by parsing a power expression, then looks for `*` or `/` operators
+   - Builds left-associative chains: `a * b / c` → `((a * b) / c)`
+   - Example: `"x * y / 2"` → `BinOpNode(BinOpNode(x, '*', y), '/', 2)`
+
+#### 4. **Powers: `parse_power()`**
+   - Parses exponentiation operations (highest precedence)
+   - Starts by parsing an atom, then looks for `**` operators
+   - Builds right-associative chains: `a ** b ** c` → `(a ** (b ** c))`
+   - Converts Python's `**` to internal `^` representation
+   - Example: `"x ** 2"` → `BinOpNode(x, '^', 2)`
+
+#### 5. **Atoms: `parse_atom()`**
+   - Parses the most basic expressions (base case for recursion)
+   - Handles five types of atoms:
+     - **Numbers**: `"42"`, `"3.14"` → `NumberNode`
+     - **Variables**: `"x"`, `"y"` → `VarNode`
+     - **Function calls**: `"sin(x)"` → `FuncNode` (detected by checking for `(` after name)
+     - **Parenthesized expressions**: `"(x + 1)"` → recursively calls `parse_expr()`
+     - **Unary minus**: `"-x"` → `UnaryOpNode('-', x)`
+
+#### 6. **Helper Methods**
+
+   - **`parse_number()`**: 
+     - Consumes digits and at most one decimal point
+     - Returns a `NumberNode` with the parsed float value
+     - Example: `"3.14"` → `NumberNode(3.14)`
+
+   - **`parse_name()`**:
+     - Parses identifiers (variable names or function names)
+     - Must start with letter or underscore, followed by alphanumeric/underscore
+     - Example: `"x"`, `"sin"`, `"my_var"` → `VarNode` or used in `FuncNode`
+
+   - **`parse_function_call()`**:
+     - Parses function calls like `sin(x)`, `exp(x**2)`
+     - Reads function name, consumes `(`, parses argument expression, consumes `)`
+     - Returns `FuncNode(func_name, argument_node)`
+
+   - **`skip_ws()`**: Skips whitespace characters at the current position
+   - **`peek()`**: Looks at the next character without consuming it (returns `None` if at end of input)
+   - **`consume(ch)`**: Consumes and returns the next character; if `ch` is provided, validates that the character matches it
+
+### Example: Parsing `"x**2 + 2*x + 1"`
+
+Here's how the parser processes this expression step by step:
+
+1. **`parse_expr()`** is called
+   - Parses first term: `"x**2"`
+   - Finds `+` operator
+   - Parses second term: `"2*x"`
+   - Finds `+` operator
+   - Parses third term: `"1"`
+   - Builds: `BinOpNode(BinOpNode(x**2, '+', 2*x), '+', 1)`
+
+2. **First term `"x**2"`** (via `parse_term()` → `parse_power()`):
+   - Parses atom: `"x"` → `VarNode("x")`
+   - Finds `**` operator
+   - Parses right atom: `"2"` → `NumberNode(2)`
+   - Returns: `BinOpNode(VarNode("x"), '^', NumberNode(2))`
+
+3. **Second term `"2*x"`** (via `parse_term()`):
+   - Parses power: `"2"` → `NumberNode(2)`
+   - Finds `*` operator
+   - Parses power: `"x"` → `VarNode("x")`
+   - Returns: `BinOpNode(NumberNode(2), '*', VarNode("x"))`
+
+4. **Third term `"1"`**:
+   - Parses atom: `"1"` → `NumberNode(1)`
+
+### Resulting AST Structure
+
+```
+BinOpNode(
+  BinOpNode(
+    BinOpNode(VarNode("x"), '^', NumberNode(2)),  // x**2
+    '+',
+    BinOpNode(NumberNode(2), '*', VarNode("x"))  // 2*x
+  ),
+  '+',
+  NumberNode(1)  // 1
+)
+```
+
+This AST structure allows the differentiation system to apply rules recursively, with each node type knowing how to differentiate itself.
+
 ## Implementation Details
 
 - Uses a recursive descent parser following operator precedence
@@ -165,9 +282,9 @@ DERIVATIVE RULE TESTS
 
 ## License
 
-This project is open source and available for educational purposes.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Author Notes
 
-This project was built as a learning exercise in implementing symbolic mathematics. While integration features were initially planned, they are not currently implemented. Future updates may include additional calculus features.
+This project was built as a learning exercise in implementing symbolic mathematics. While integration features were initially planned, they are not currently implemented. Future updates may include additional calculus features such as definite and indefinite integration.
 
