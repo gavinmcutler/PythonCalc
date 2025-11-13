@@ -10,8 +10,8 @@
 # of functions. All symbolic manipulation is done through custom node classes without
 # external symbolic math libraries.
 # This was a pain to make. 
-# I was planning to also include more topics from calculus like definite and indefinite,
-# But im too burn out on this project to go any further. mabey in the future this will chnage.
+# I was planning to also include more topics from calculus such as definite and indefinite integrals,
+# But im too burn out on this project to go any further. mabey in the future this will change.
 
 class Node:
     def diff(self, var):
