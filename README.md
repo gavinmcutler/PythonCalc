@@ -30,7 +30,7 @@ No installation required! Just ensure you have Python 3.x installed.
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/PythonCalc.git
+git clone https://github.com/gavinmcutler/PythonCalc.git
 cd PythonCalc
 ```
 
